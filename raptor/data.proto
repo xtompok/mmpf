@@ -1,0 +1,56 @@
+message Route{
+	required uint32 id = 1;
+	required uint32 nstops = 2;
+	required uint32 ntrips = 3;
+	required uint32 stopsidx = 4;
+	required uint32 tripsidx = 5;
+	optional string name = 6;
+}
+message StopTime{
+	required int32 arrival = 1;
+	required int32 departure = 2;
+}
+
+message Stop{
+	required uint32 id = 1;
+	required uint32 nroutes = 2;
+	required uint32 ntransfers = 3;
+	required uint32 routeidx = 4;
+	required uint32 transferidx = 5;
+	optional string name = 6;
+}
+
+message Transfer{
+	required uint32 from = 1;
+	required uint32 to = 2;
+	required float time = 3; 
+}
+
+message Stops{
+	repeated Stop stops = 1;	
+}
+
+message Routes{
+	repeated Route routes = 1;	
+}
+
+message Transfers {
+	repeated Transfer transfers = 1;
+}
+message StopTimes {
+	repeated StopTime stop_times = 1;
+}
+message RouteStops {
+	repeated uint32 stop_ids = 1;
+}
+message StopRoutes {
+	repeated uint32 route_ids = 1;
+}
+message Timetable {
+	required Routes routes = 1;
+	required StopTimes stop_times = 2;
+	required RouteStops route_stops = 3;
+	required Stops stops = 4;
+	required Transfers transfers = 5;
+	required StopRoutes stop_routes = 6;	
+}
