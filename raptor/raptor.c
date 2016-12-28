@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "data.pb-c.h"
 #define MAX_TRANSFERS 8
@@ -15,6 +16,17 @@ struct stop_arrivals{
 struct mem_data {
 	struct stop_arrivals * s_arr;	
 };
+
+char * prt_time(uint32_t time){
+	char * str;
+	str = malloc(9);
+	if (time==UINT32_MAX){
+		sprintf(str,"--:--:--");
+	}else{
+		sprintf(str,"%2d:%02d:%02d",time/3600, (time%3600)/60, time%60);
+	}
+	return str;
+}
 
 Timetable * load_timetable(char * filename){
 	FILE * ttfile;
@@ -80,33 +92,48 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ui
 			int trip = -1;
 			int trip_from = -1;
 
+			printf("--Route %s\n",tt->routes[r]->name);
 			for (int s=0; s<nstops; s++){
 				struct stop_arrivals * curst;
 				curst = &(md->s_arr[rs[s]]);
+				printf("At: %s on %s\n",tt->stops[rs[s]]->name,prt_time(curst->time[round-1]));
 				// Trip undefined
 				if (trip==-1){
-					if (curst->time[round-1] == UINT32_MAX)
+					if (curst->time[round-1] == UINT32_MAX){
+						printf(".");
 						continue;
+					}
 					for (int t=0; t<ntrips*nstops; t+=nstops){
 						if (st[s+t]->departure <= curst->time[round-1])
 							continue;
 						trip = t;
 						trip_from = s;
-						printf("Found trip %d on route %s at %s on %d\n",trip,tt->routes[r]->name,tt->stops[s]->name,st[s+t]->departure);
+						printf("Found trip %d on route %s at %s on %s\n",trip,tt->routes[r]->name,tt->stops[rs[s]]->name,prt_time(st[s+t]->departure));
+						if (t>0){
+							printf("Previous trip at %s\n",prt_time(st[s+t-nstops]->departure));
+						}
 						break;
 					}
 
 				// Trip found
 				}else{
-					if (curst->time[round-1] > st[s+trip]->arrival){
+					printf("Current time: %s, trip: %s",
+						prt_time(curst->time[round]),
+						prt_time(st[s+trip]->arrival));
+					if (trip>0){
+						printf(", prev trip: %s\n",prt_time(st[s+trip-nstops]->arrival));
+					}else{
+						printf("\n");
+					}
+					if (curst->time[round] > st[s+trip]->arrival){
 						curst->time[round] = st[s+trip]->arrival;
 						curst->from[round] = trip_from;
-					//	printf("Updated time at %s to %d\n",tt->stops[s]->name,curst->time[round]);
+						//printf("Updated time at %s to %d\n",tt->stops[s]->name,curst->time[round]);
 					}
-				//	while ((curst->time[round] < st[s+trip]->arrival) && (trip > 0)){
-				//		trip -= nstops;
-				//	}
-				//	trip+=nstops;
+					while ((trip > 0) && (curst->time[round-1] < st[s+trip-nstops]->departure)){
+						trip -= nstops;
+						printf("Trip decreased to %d\n",trip);
+					}
 					
 				}
 
@@ -119,14 +146,20 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ui
 
 void print_results(Timetable * tt, struct mem_data * md, int from, int to, int time){
 	for (int s=0;s<tt->n_stops;s++){
-		if (md->s_arr[s].time == UINT32_MAX)
-			continue;
-		printf("Station: %s, time: %d\n",tt->stops[s]->name,md->s_arr[s].time);
+		
+		for (int k=0;k<MAX_TRANSFERS;k++){
+			if (md->s_arr[s].time[k] == UINT32_MAX)
+				continue;
+			printf("Station: %s(%d), time: %s, round %d\n",tt->stops[s]->name,s,prt_time(md->s_arr[s].time[k]),k);
+		}
+	
 	}
 
 
-	printf("From: %s at %d\n",tt->stops[from]->name,time);
-	printf("To %s ad %d\n",tt->stops[to]->name,md->s_arr[to].time);
+	printf("From: %s at %s\n",tt->stops[from]->name,prt_time(time));
+	for (int k=0;k<MAX_TRANSFERS;k++){
+		printf("To %s ad %s\n",tt->stops[to]->name,prt_time(md->s_arr[to].time[k]));
+	}
 
 
 }
