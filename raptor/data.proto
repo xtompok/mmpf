@@ -26,31 +26,11 @@ message Transfer{
 	required float time = 3; 
 }
 
-message Stops{
-	repeated Stop stops = 1;	
-}
-
-message Routes{
-	repeated Route routes = 1;	
-}
-
-message Transfers {
-	repeated Transfer transfers = 1;
-}
-message StopTimes {
-	repeated StopTime stop_times = 1;
-}
-message RouteStops {
-	repeated uint32 stop_ids = 1;
-}
-message StopRoutes {
-	repeated uint32 route_ids = 1;
-}
 message Timetable {
-	required Routes routes = 1;
-	required StopTimes stop_times = 2;
-	required RouteStops route_stops = 3;
-	required Stops stops = 4;
-	required Transfers transfers = 5;
-	required StopRoutes stop_routes = 6;	
+	repeated Route routes = 1;
+	repeated StopTime stop_times = 2;
+	repeated uint32 route_stops = 3;
+	repeated Stop stops = 4;
+	repeated Transfer transfers = 5;
+	repeated uint32 stop_routes = 6;	
 }
