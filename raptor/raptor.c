@@ -5,7 +5,16 @@
 #include <stdint.h>
 
 #include "data.pb-c.h"
+#define MAX_TRANSFERS 8
 
+struct stop_arrivals{
+	uint32_t time[MAX_TRANSFERS];
+	uint32_t from[MAX_TRANSFERS];	
+};
+
+struct mem_data {
+	struct stop_arrivals * s_arr;	
+};
 
 Timetable * load_timetable(char * filename){
 	FILE * ttfile;
@@ -25,8 +34,122 @@ Timetable * load_timetable(char * filename){
 	return timetable__unpack(NULL,ttbuf_sz,ttbuf);
 }
 
-void search_con(Timetable * tt,uint32_t from,uint32_t to,uint32_t time){
+struct mem_data * init_mem_data(Timetable * tt){
+	struct mem_data * md;
+	md = malloc(sizeof(struct mem_data));
+	if (!md){
+		return NULL;
+	}
+	md->s_arr = calloc(tt->n_stops,sizeof(struct stop_arrivals));
+	if (!md->s_arr){
+		return NULL;
+	}
+	return md;
+}
+
+void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,uint32_t time){	
+	for (int s=0;s<tt->n_stops;s++){
+		for (int k=0;k<MAX_TRANSFERS;k++){
+			md->s_arr[s].time[k] = UINT32_MAX;
+		}
+	}
+
+	md->s_arr[from].time[0] = time;
 	
+	for (int round=1;round < MAX_TRANSFERS;round++){
+		printf("===========Round %d============\n",round);
+		//Copy times from last round
+		for (int s=0;s<tt->n_stops;s++){
+			md->s_arr[s].time[round] = md->s_arr[s].time[round-1];
+			md->s_arr[s].from[round] = md->s_arr[s].from[round-1];
+					
+		}
+		
+		// Update times with transfers
+		for (int r=0;r<tt->n_routes;r++){	
+			uint32_t * rs;
+			StopTime ** st;
+			int nstops;
+			int ntrips;
+
+			rs = tt->route_stops + tt->routes[r]->stopsidx;
+			st = tt->stop_times + tt->routes[r]->tripsidx;
+			nstops = tt->routes[r]->nstops;
+			ntrips = tt->routes[r]->ntrips;
+
+			int trip = -1;
+			int trip_from = -1;
+
+			for (int s=0; s<nstops; s++){
+				struct stop_arrivals * curst;
+				curst = &(md->s_arr[rs[s]]);
+				// Trip undefined
+				if (trip==-1){
+					if (curst->time[round-1] == UINT32_MAX)
+						continue;
+					for (int t=0; t<ntrips*nstops; t+=nstops){
+						if (st[s+t]->departure <= curst->time[round-1])
+							continue;
+						trip = t;
+						trip_from = s;
+						printf("Found trip %d on route %s at %s on %d\n",trip,tt->routes[r]->name,tt->stops[s]->name,st[s+t]->departure);
+						break;
+					}
+
+				// Trip found
+				}else{
+					if (curst->time[round-1] > st[s+trip]->arrival){
+						curst->time[round] = st[s+trip]->arrival;
+						curst->from[round] = trip_from;
+					//	printf("Updated time at %s to %d\n",tt->stops[s]->name,curst->time[round]);
+					}
+				//	while ((curst->time[round] < st[s+trip]->arrival) && (trip > 0)){
+				//		trip -= nstops;
+				//	}
+				//	trip+=nstops;
+					
+				}
+
+
+
+			}
+		}
+	}		
+}
+
+void print_results(Timetable * tt, struct mem_data * md, int from, int to, int time){
+	for (int s=0;s<tt->n_stops;s++){
+		if (md->s_arr[s].time == UINT32_MAX)
+			continue;
+		printf("Station: %s, time: %d\n",tt->stops[s]->name,md->s_arr[s].time);
+	}
+
+
+	printf("From: %s at %d\n",tt->stops[from]->name,time);
+	printf("To %s ad %d\n",tt->stops[to]->name,md->s_arr[to].time);
+
+
+}
+void check_trips(Timetable * tt){
+	for (int r=0;r<tt->n_routes;r++){
+		StopTime ** st;
+		int ntrips;
+		int nstops;
+
+		st = tt->stop_times + tt->routes[r]->tripsidx;
+		ntrips = tt->routes[r]->ntrips;
+		nstops = tt->routes[r]->nstops;
+
+		int lasttrip = 0;
+
+		for (int t=0;t <ntrips*nstops; t+=nstops){
+			if (st[t]->departure < lasttrip){
+				printf("Wrong order: Route %d trip %d time %d last %d\n",r,t/nstops,st[t]->departure,lasttrip);
+			}
+			lasttrip = st[t]->departure;
+		}
+	}	
+
 }
 
 int main(int argc, char ** argv){
@@ -37,6 +160,20 @@ int main(int argc, char ** argv){
 		printf("Failed to load timetable\n");	
 		return 1;
 	}
+	printf("Timetable loaded. Stops: %d, routes: %d\n",timetable->n_stops,timetable->n_routes);
+	check_trips(timetable);
+
+//	for (int i=0; i<timetable->n_stop_times;i++){
+//		printf("%d %d\n",timetable->stop_times[i]->arrival, timetable->stop_times[i]->departure);
+//	}
+	
+	struct mem_data * md;
+	md = init_mem_data(timetable);
+	if (!md){
+		printf("Failed to init in-memory data");
+		return 1;	
+	}
+
 	
 	uint32_t from;
 	uint32_t to;
@@ -53,7 +190,8 @@ int main(int argc, char ** argv){
 
 	printf("Searching from %d to %d at %d\n",from,to,time);
 
-	search_con(timetable,from,to,time);	
+	search_con(timetable,md,from,to,time);	
+	print_results(timetable,md,from,to,time);
 
 	return 0;
 }
