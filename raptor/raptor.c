@@ -11,6 +11,7 @@
 struct stop_arrivals{
 	uint32_t time[MAX_TRANSFERS];
 	uint32_t from[MAX_TRANSFERS];	
+	uint32_t route[MAX_TRANSFERS];
 };
 
 struct mem_data {
@@ -74,6 +75,7 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ui
 		for (int s=0;s<tt->n_stops;s++){
 			md->s_arr[s].time[round] = md->s_arr[s].time[round-1];
 			md->s_arr[s].from[round] = md->s_arr[s].from[round-1];
+			md->s_arr[s].route[round] = md->s_arr[s].route[round-1];
 					
 		}
 		
@@ -107,7 +109,7 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ui
 						if (st[s+t]->departure <= curst->time[round-1])
 							continue;
 						trip = t;
-						trip_from = s;
+						trip_from = rs[s];
 						printf("Found trip %d on route %s at %s on %s\n",trip,tt->routes[r]->name,tt->stops[rs[s]]->name,prt_time(st[s+t]->departure));
 						if (t>0){
 							printf("Previous trip at %s\n",prt_time(st[s+t-nstops]->departure));
@@ -128,6 +130,7 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ui
 					if (curst->time[round] > st[s+trip]->arrival){
 						curst->time[round] = st[s+trip]->arrival;
 						curst->from[round] = trip_from;
+						curst->route[round] = r;
 						//printf("Updated time at %s to %d\n",tt->stops[s]->name,curst->time[round]);
 					}
 					while ((trip > 0) && (curst->time[round-1] < st[s+trip-nstops]->departure)){
@@ -150,7 +153,7 @@ void print_results(Timetable * tt, struct mem_data * md, int from, int to, int t
 		for (int k=0;k<MAX_TRANSFERS;k++){
 			if (md->s_arr[s].time[k] == UINT32_MAX)
 				continue;
-			printf("Station: %s(%d), time: %s, round %d\n",tt->stops[s]->name,s,prt_time(md->s_arr[s].time[k]),k);
+			printf("Station: %s(%d), time: %s, round %d, from %d\n",tt->stops[s]->name,s,prt_time(md->s_arr[s].time[k]),k,md->s_arr[s].from[k]);
 		}
 	
 	}
@@ -158,8 +161,33 @@ void print_results(Timetable * tt, struct mem_data * md, int from, int to, int t
 
 	printf("From: %s at %s\n",tt->stops[from]->name,prt_time(time));
 	for (int k=0;k<MAX_TRANSFERS;k++){
-		printf("To %s ad %s\n",tt->stops[to]->name,prt_time(md->s_arr[to].time[k]));
+		printf("To %s at %s by %s\n",
+			tt->stops[to]->name,
+			prt_time(md->s_arr[to].time[k]),
+			tt->routes[md->s_arr[to].route[k]]->name);
 	}
+
+	uint32_t stops_buf[MAX_TRANSFERS];
+	uint32_t stop;
+	int round;
+	int count;
+	stop = to;
+	round = MAX_TRANSFERS-1;
+	count = 0;
+	while (stop != from){
+		stop = md->s_arr[stop].from[round];
+		stops_buf[round] = stop;
+		round--;
+		count++;
+	}
+	for (int i=round+1;i<MAX_TRANSFERS;i++){
+		uint32_t s;
+		s = stops_buf[i];
+		printf("Stop: %s, time: %s by: %s\n",tt->stops[s]->name,prt_time(md->s_arr[s].time[i]),tt->routes[md->s_arr[s].route[i]]->name);	
+	}
+
+	
+	
 
 
 }
