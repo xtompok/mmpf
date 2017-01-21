@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <time.h>
+#include <math.h>
 
 #include "data.pb-c.h"
 #define MAX_TRANSFERS 8
@@ -12,6 +14,11 @@ struct stop_arrivals{
 	uint32_t time[MAX_TRANSFERS];
 	uint32_t from[MAX_TRANSFERS];	
 	uint32_t route[MAX_TRANSFERS];
+};
+struct stop_arrival{
+	uint32_t time;
+	uint32_t from;
+	uint32_t route;	
 };
 
 struct mem_data {
@@ -27,6 +34,81 @@ char * prt_time(uint32_t time){
 		sprintf(str,"%2d:%02d:%02d",time/3600, (time%3600)/60, time%60);
 	}
 	return str;
+}
+
+char valid_time(uint32_t time){
+	return !(time==UINT32_MAX);		
+}
+
+// Return relative index of stop on route in stop_times or UINT32_MAX if not found
+uint32_t get_stopidx(Timetable * tt, uint32_t stop, uint32_t routeidx){
+	Route * route;
+	route = tt->routes[routeidx];
+	uint32_t stopidx;
+	stopidx = UINT32_MAX;
+	for (int i=route->stopsidx;i<route->stopsidx+route->nstops;i++){
+		if (tt->route_stops[i]==stop){
+			stopidx = i-route->stopsidx;
+			break;
+			}
+	}
+	return stopidx;
+
+}
+
+uint32_t get_trip_from_arrival(Timetable * tt,uint32_t stop,uint32_t arr, uint32_t routeidx){
+	Route * route;
+	route = tt->routes[routeidx];
+	uint32_t stopidx;
+	stopidx = get_stopidx(tt,stop,routeidx);
+
+	if (stopidx == UINT32_MAX){
+		printf("Stop not found");
+		return UINT32_MAX;	
+	}
+
+	for (int i=route->tripsidx+stopidx;
+		i<route->tripsidx+(route->ntrips*route->nstops);
+		i+=route->nstops){
+		
+		if (tt->stop_times[i]->arrival == arr){
+			return i-stopidx;
+		}
+		
+	}
+	return UINT32_MAX;
+}
+
+uint32_t get_departure(Timetable * tt,uint32_t from,uint32_t to, uint32_t arr, uint32_t routeidx){
+	uint32_t tostopidx;
+	tostopidx = get_stopidx(tt,to,routeidx);
+
+	uint32_t fromstopidx;
+	fromstopidx = get_stopidx(tt,from,routeidx);
+
+	if (tostopidx == UINT32_MAX || fromstopidx == UINT32_MAX ){
+		printf("Stop not found");
+		return UINT32_MAX;	
+	}
+
+	uint32_t tripidx;
+	tripidx = get_trip_from_arrival(tt,to,arr,routeidx);
+	if (tripidx == UINT32_MAX){
+		printf("Trip not found");
+		return UINT32_MAX;	
+	}
+	
+	return tt->stop_times[tripidx+fromstopidx]->departure;
+
+	
+}
+
+struct stop_arrival get_arrival(struct mem_data * md,uint32_t stop, uint32_t round){
+	struct stop_arrival sa;
+	sa.from = md->s_arr[stop].from[round];
+	sa.time = md->s_arr[stop].time[round];
+	sa.route = md->s_arr[stop].route[round];
+	return sa;
 }
 
 Timetable * load_timetable(char * filename){
@@ -60,7 +142,56 @@ struct mem_data * init_mem_data(Timetable * tt){
 	return md;
 }
 
-void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,uint32_t time){	
+int time2sec(time_t time){
+	struct tm start;
+	start.tm_year=2017;
+	start.tm_mon=0;
+	start.tm_mday=1;
+	start.tm_hour=0;
+	start.tm_min = 0;
+	start.tm_sec = 0;
+	
+	time_t start_time;
+	start_time = mktime(&start);
+	
+	return ((int)floor(difftime(time,start_time)))%(24*3600);
+}
+
+time_t curr_day_timestamp(void){
+	time_t curr_time;
+	curr_time=time(NULL);
+	curr_time-=curr_time%(24*3600);
+	return curr_time;
+		
+}
+
+uint8_t is_valid_trip(Validity * valid, time_t time){
+	printf("Start: %llu, end: %llu\n",valid->start,valid->end);
+	if (valid->start > time){
+		return 0;
+	}
+	if (valid->end < time){
+		return 0;
+	}
+	printf("Validity len:%d, data:",valid->bitmap.len);
+	for (int i=0;i<valid->bitmap.len;i++){
+		printf("%02x ",valid->bitmap.data[i]);	
+	}
+	printf("\n");
+	int days;
+	int index;
+	int bitindex;
+	days = (time-valid->start)/(24*3600);
+	index = days/8;
+	bitindex = days%8;
+	return valid->bitmap.data[index]&(1<<bitindex);
+}
+
+
+void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,time_t time){	
+	time_t date;
+	date = time - (time%(24*3600));
+	time %= 24*3600;
 	for (int s=0;s<tt->n_stops;s++){
 		for (int k=0;k<MAX_TRANSFERS;k++){
 			md->s_arr[s].time[k] = UINT32_MAX;
@@ -83,11 +214,13 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ui
 		for (int r=0;r<tt->n_routes;r++){	
 			uint32_t * rs;
 			StopTime ** st;
+			uint32_t * valids;
 			int nstops;
 			int ntrips;
 
 			rs = tt->route_stops + tt->routes[r]->stopsidx;
 			st = tt->stop_times + tt->routes[r]->tripsidx;
+			valids = tt->trip_validity + tt->routes[r]->servicesidx;
 			nstops = tt->routes[r]->nstops;
 			ntrips = tt->routes[r]->ntrips;
 
@@ -106,6 +239,11 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ui
 						continue;
 					}
 					for (int t=0; t<ntrips*nstops; t+=nstops){
+						// TODO: Does not consider trips through midnight
+						if (!is_valid_trip(tt->validities[valids[t/nstops]], date+time)){
+							printf("Trip invalid\n");
+							continue;
+						}
 						if (st[s+t]->departure <= curst->time[round-1])
 							continue;
 						trip = t;
@@ -153,7 +291,18 @@ void print_results(Timetable * tt, struct mem_data * md, int from, int to, int t
 		for (int k=0;k<MAX_TRANSFERS;k++){
 			if (md->s_arr[s].time[k] == UINT32_MAX)
 				continue;
-			printf("Station: %s(%d), time: %s, round %d, from %d\n",tt->stops[s]->name,s,prt_time(md->s_arr[s].time[k]),k,md->s_arr[s].from[k]);
+			uint32_t from;
+			uint32_t arr;
+			uint32_t route;
+			from = md->s_arr[s].from[k];
+			arr = md->s_arr[s].time[k];
+			route = md->s_arr[s].route[k];
+
+			printf("Station: %s(%d), time: %s, round %d, from %s, time: %s\n",
+				tt->stops[s]->name,s,
+				prt_time(arr),k,
+				tt->stops[from]->name,
+				prt_time(get_departure(tt,from,s,arr,route)));
 		}
 	
 	}
@@ -161,10 +310,15 @@ void print_results(Timetable * tt, struct mem_data * md, int from, int to, int t
 
 	printf("From: %s at %s\n",tt->stops[from]->name,prt_time(time));
 	for (int k=0;k<MAX_TRANSFERS;k++){
-		printf("To %s at %s by %s\n",
-			tt->stops[to]->name,
-			prt_time(md->s_arr[to].time[k]),
-			tt->routes[md->s_arr[to].route[k]]->name);
+		if (valid_time(md->s_arr[to].time[k])){
+			printf("To %s at %s by %s\n",
+				tt->stops[to]->name,
+				prt_time(md->s_arr[to].time[k]),
+				tt->routes[md->s_arr[to].route[k]]->name);
+		} else {
+			printf("Can't get to %s with %d transfers\n",
+				tt->stops[to]->name,k);
+		}
 	}
 
 	uint32_t stops_buf[MAX_TRANSFERS];
@@ -172,18 +326,30 @@ void print_results(Timetable * tt, struct mem_data * md, int from, int to, int t
 	int round;
 	int count;
 	stop = to;
-	round = MAX_TRANSFERS-1;
+	stops_buf[MAX_TRANSFERS-1]=stop;
+	round = MAX_TRANSFERS-2;
 	count = 0;
 	while (stop != from){
+		if (!valid_time(md->s_arr[stop].time[round])){
+			printf("Connection not found\n");
+			return;
+		}
 		stop = md->s_arr[stop].from[round];
 		stops_buf[round] = stop;
 		round--;
 		count++;
 	}
-	for (int i=round+1;i<MAX_TRANSFERS;i++){
+	for (int i=round+2;i<MAX_TRANSFERS;i++){
 		uint32_t s;
 		s = stops_buf[i];
-		printf("Stop: %s, time: %s by: %s\n",tt->stops[s]->name,prt_time(md->s_arr[s].time[i]),tt->routes[md->s_arr[s].route[i]]->name);	
+		struct stop_arrival sa;
+		sa = get_arrival(md,s,i);
+		printf("%s (%s) --> %s (%s) by %s\n",
+			tt->stops[sa.from]->name,
+			prt_time(get_departure(tt,sa.from,s,sa.time,sa.route)),
+			tt->stops[s]->name,
+			prt_time(sa.time),
+			tt->routes[sa.route]->name);	
 	}
 
 	
@@ -249,9 +415,9 @@ int main(int argc, char ** argv){
 	to = atoi(argv[2]);
 	time = atoi(argv[3]);
 
-	printf("Searching from %d to %d at %d\n",from,to,time);
+	printf("Searching from %d to %d at %d\n",from,to,time+curr_day_timestamp());
 
-	search_con(timetable,md,from,to,time);	
+	search_con(timetable,md,from,to,time+curr_day_timestamp());	
 	print_results(timetable,md,from,to,time);
 
 	return 0;

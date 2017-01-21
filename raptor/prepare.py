@@ -5,7 +5,88 @@ import csv
 import psycopg2
 import psycopg2.extras
 import data_pb2
+from datetime import date
+import calendar 
+import datetime
+import math
 
+class Subroute(object):
+	maxid = 0
+	stop_seqs = {}
+
+	def __init__(self,stimes,service_id,name=None):
+		stops = tuple(map(lambda x:stoplut[x["stop_id"]], stimes))
+		service_id = int(service_id)
+		pbtimes = []
+		for stop in stimes:
+			pbtime = data_pb2.StopTime()
+			pbtime.arrival = time2sec(stop["arrival_time"])
+			pbtime.departure = time2sec(stop["departure_time"])
+			pbtimes.append(pbtime) 
+
+		if stops in self.stop_seqs:
+			self.stop_seqs[stops].append(pbtimes,service_id)
+			self.valid = False
+		else:
+			self.new(pbtimes,service_id,stops,name)
+			self.stop_seqs[stops] = self
+			self.valid = True
+
+		
+	def new(self,pbtimes,service_id,stops,name):
+		self.pbroute = data_pb2.Route()
+		self.pbroute.id = Subroute.maxid
+		self.pbroute.ntrips = 1
+		self.pbroute.nstops = len(stops)
+		if name:
+			self.pbroute.name = name
+
+		Subroute.maxid += 1
+
+		self.stops = stops
+		self.triptimes = [pbtimes]
+		self.services = [service_id]
+
+	def append(self,pbtimes,service_id):
+		self.triptimes.append(pbtimes)
+		self.services.append(service_id)
+		self.pbroute.ntrips += 1
+	
+	def flush(self,rstops,trips,routes,services):
+		self.pbroute.stopsidx = len(rstops)
+		self.pbroute.tripsidx = len(trips)
+		self.pbroute.servicesidx = len(services)
+		rstops.extend(self.stops)
+		self.triptimes.sort(key=lambda x:x[0].departure)
+		for triptime in self.triptimes:
+			trips.extend(triptime)
+		services.extend(self.services)
+		routes.extend([self.pbroute])
+
+def cal2validity(val,week,exc):
+	weekdays = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+	print(type(week))
+	val.start = calendar.timegm(week["start_date"].timetuple())
+	val.end = calendar.timegm(week["end_date"].timetuple())
+	startwd = week["start_date"].weekday()
+	oneday = datetime.timedelta(days=1)
+	curday = week["start_date"]
+	days = []
+	while curday <= week["end_date"]:
+		days.append(int(week[weekdays[curday.weekday()]]))
+		curday += oneday
+	val.bitmap = list2bitstring(days)
+
+
+def list2bitstring(l):
+	bs = []
+	while len(l)%8 != 0:
+		l.append(0)
+	for i in range(int(len(l)/8)):
+		a = l[8*i+0] | l[8*i+1]<<1 | l[8*i+2]<<2 | l[8*i+3]<<3 | \
+			l[8*i+4]<<4 | l[8*i+5]<<5 | l[8*i+6]<<6 | l[8*i+7]<<7
+		bs.append(a)
+	return bytes(bs)
 
 def time2sec(time):
 	(h,m,s) = time.split(":")
@@ -21,7 +102,7 @@ cur = conn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 
 pbtt = data_pb2.Timetable()
 
-#Stops
+# Stops
 cur.execute("SELECT * FROM gtfs_stops")
 stops = cur.fetchall()
 stoplut = {}
@@ -33,60 +114,22 @@ for (newid,stop) in enumerate (stops):
 	pbstop = pbstops.add()
 	pbstop.name = stop["stop_name"] 
 	pbstop.id = newid
+
+#Validities
+cur.execute("SELECT * FROM gtfs_calendar;")
+services = cur.fetchall()
+pbvalidities = pbtt.validities
+servlut = {}
+servilut = {}
+for (newid,service) in enumerate(services):
+	servlut[service["service_id"]]=newid
+	servilut[newid]=service["service_id"]
+	cur.execute("SELECT * FROM gtfs_calendar_dates WHERE service_id = %s;",(service["service_id"],))
+	exceptions = cur.fetchall()
+	cal2validity(pbvalidities.add(),service,exceptions)
 	
 
-# Routes
-
-class Subroute(object):
-	maxid = 0
-	stop_seqs = {}
-
-	def __init__(self,stimes,name=None):
-		stops = tuple(map(lambda x:stoplut[x["stop_id"]], stimes))
-		pbtimes = []
-		for stop in stimes:
-			pbtime = data_pb2.StopTime()
-			pbtime.arrival = time2sec(stop["arrival_time"])
-			pbtime.departure = time2sec(stop["departure_time"])
-			pbtimes.append(pbtime) 
-
-		if stops in self.stop_seqs:
-			self.stop_seqs[stops].append(pbtimes)
-			self.valid = False
-		else:
-			self.new(pbtimes,stops,name)
-			self.stop_seqs[stops] = self
-			self.valid = True
-
-		
-	def new(self,pbtimes,stops,name):
-		self.pbroute = data_pb2.Route()
-		self.pbroute.id = Subroute.maxid
-		self.pbroute.ntrips = 1
-		self.pbroute.nstops = len(stops)
-		if name:
-			self.pbroute.name = name
-
-		Subroute.maxid += 1
-
-		self.stops = stops
-		self.triptimes = [pbtimes]
-
-	def append(self,pbtimes):
-		self.triptimes.append(pbtimes)
-		self.pbroute.ntrips += 1
-	
-	def flush(self,rstops,trips,routes):
-		self.pbroute.stopsidx = len(rstops)
-		self.pbroute.tripsidx = len(trips)
-		rstops.extend(self.stops)
-		self.triptimes.sort(key=lambda x:x[0].departure)
-		for triptime in self.triptimes:
-			trips.extend(triptime)
-		routes.extend([self.pbroute])
-
-	
-		
+# Routes		
 cur.execute("SELECT * FROM gtfs_routes ORDER BY route_short_name;")
 routes = cur.fetchall()
 
@@ -100,7 +143,7 @@ for route in routes:
 	for trip in trips:
 		cur.execute("SELECT * FROM gtfs_stop_times WHERE trip_id = %s ORDER BY stop_sequence",(trip["trip_id"],))
 		stimes = cur.fetchall()
-		sr = Subroute(stimes,route["route_short_name"])
+		sr = Subroute(stimes,servlut[trip["service_id"]],route["route_short_name"])
 		if sr.valid:
 			subroutes.append(sr)
 
@@ -108,9 +151,10 @@ for route in routes:
 pbtimes = pbtt.stop_times
 pbroutes = pbtt.routes
 pbrstops = pbtt.route_stops
+pbvals = pbtt.trip_validity
 
 for sr in subroutes:
-	sr.flush(pbrstops,pbtimes,pbroutes)
+	sr.flush(pbrstops,pbtimes,pbroutes,pbvals)
 
 pbsroutes = pbtt.stop_routes
 pbtransfers = pbtt.transfers

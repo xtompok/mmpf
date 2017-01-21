@@ -4,7 +4,8 @@ message Route{
 	required uint32 ntrips = 3;
 	required uint32 stopsidx = 4;
 	required uint32 tripsidx = 5;
-	optional string name = 6;
+	required uint32 servicesidx = 6;
+	optional string name = 7;
 }
 message StopTime{
 	required int32 arrival = 1;
@@ -26,11 +27,21 @@ message Transfer{
 	required float time = 3; 
 }
 
+message Validity {
+	required uint64 start = 1;
+	required uint64 end = 2;
+	required bytes bitmap = 3;
+}
+
+
 message Timetable {
-	repeated Route routes = 1;
-	repeated StopTime stop_times = 2;
-	repeated uint32 route_stops = 3;
-	repeated Stop stops = 4;
-	repeated Transfer transfers = 5;
-	repeated uint32 stop_routes = 6;	
+//	required Date from = 1;
+	repeated Route routes = 2;
+	repeated StopTime stop_times = 3;
+	repeated uint32 trip_validity = 4;
+	repeated Validity validities = 5;
+	repeated uint32 route_stops = 6;
+	repeated Stop stops = 7;
+	repeated Transfer transfers = 8;
+	repeated uint32 stop_routes = 9;	
 }

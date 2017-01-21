@@ -1,5 +1,5 @@
 CFLAGS= -Wall -std=c99 -ggdb3
-LDFLAGS=-lprotobuf-c
+LDFLAGS=-lprotobuf-c -lm
 
 all: raptor
 
