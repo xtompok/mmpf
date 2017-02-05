@@ -57,10 +57,11 @@ class Subroute(object):
 		self.pbroute.tripsidx = len(trips)
 		self.pbroute.servicesidx = len(services)
 		rstops.extend(self.stops)
-		self.triptimes.sort(key=lambda x:x[0].departure)
-		for triptime in self.triptimes:
+		trips_services = [(trip,service) for trip,service in zip(self.triptimes,self.services)]
+		trips_services.sort(key=lambda x:x[0][0].departure)
+		for triptime,service_id in trips_services:
 			trips.extend(triptime)
-		services.extend(self.services)
+			services.extend([service_id])
 		routes.extend([self.pbroute])
 
 def cal2validity(val,week,exc):
@@ -144,6 +145,7 @@ for route in routes:
 	for trip in trips:
 		cur.execute("SELECT * FROM gtfs_stop_times WHERE trip_id = %s ORDER BY stop_sequence",(trip["trip_id"],))
 		stimes = cur.fetchall()
+		#print("Trip {},serivce_id {}".format(trip["trip_id"],trip["service_id"]));
 		sr = Subroute(stimes,servlut[trip["service_id"]],route["route_short_name"])
 		if sr.valid:
 			subroutes.append(sr)
