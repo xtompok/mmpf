@@ -83,6 +83,7 @@ struct timetable {
 	struct route * routes;
 	struct st_time * st_times;
 	struct transfer * transfers;	
+	int nstops;
 	struct stop * stops;
 	struct stop ** rt_stops;
 	struct route ** st_routes;
