@@ -82,7 +82,6 @@ void print_route_trips_validity(Timetable * tt, Route * rt, time_t time){
 			printf("invalid (%d)\n",tt->trip_validity[rt->servicesidx+i]);
 		}
 	}
-	return lut;
 	
 }
 
