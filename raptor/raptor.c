@@ -69,6 +69,23 @@ struct stop * gen_stops(Timetable * tt){
 	return stops;
 }
 
+void print_route_trips_validity(Timetable * tt, Route * rt, time_t time){
+	for (int i=0;i<rt->ntrips;i++){
+		printf("%s at %s on %s - ",
+			tt->stops[tt->route_stops[rt->stopsidx]]->name,
+			prt_time(tt->stop_times[rt->tripsidx+i*rt->nstops]->departure),
+			rt->name);
+
+		if (is_valid_trip(tt->validities[tt->trip_validity[rt->servicesidx+i]],time)){
+			printf("valid (%d)\n",tt->trip_validity[rt->servicesidx+i]);
+		} else {
+			printf("invalid (%d)\n",tt->trip_validity[rt->servicesidx+i]);
+		}
+	}
+	return lut;
+	
+}
+
 int * gen_trips_lut(Timetable * tt,Route * rt,time_t time){
 	int * lut;
 	unsigned int lutidx;
@@ -80,7 +97,7 @@ int * gen_trips_lut(Timetable * tt,Route * rt,time_t time){
 			lut[i]=lutidx;
 			lutidx++;	
 		} else {
-			lut[i]=-1;	
+			lut[i]=-1;
 		}
 	}
 	return lut;
@@ -346,6 +363,22 @@ void print_tt_stats(Timetable * tt){
 	}*/
 	printf("\n");
 	printf("Trips: %d\n",ntrips);
+}
+
+void print_trips(struct timetable * tt){
+	for (int ridx = 0;ridx<tt->nroutes;ridx++){
+		struct route * r;
+		r = tt->routes+ridx;
+		printf("Route: %s\n",r->name);
+		for (int sidx=0;sidx < r->nstops;sidx++){
+			printf("%30s	",r->stops[sidx]->name);
+			for (int tidx=0;tidx < r->ntrips;tidx++){
+				printf("%s ",prt_time(r->trips[tidx*r->nstops+sidx].departure));		
+			}	
+			printf("\n");
+		}	
+	}
+
 }
 
 struct mem_data * init_mem_data(Timetable * tt){
