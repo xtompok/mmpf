@@ -65,16 +65,16 @@ class Subroute(object):
 
 def cal2validity(val,week,exc):
 	weekdays = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
-	print(type(week))
 	val.start = calendar.timegm(week["start_date"].timetuple())
 	val.end = calendar.timegm(week["end_date"].timetuple())
-	startwd = week["start_date"].weekday()
 	oneday = datetime.timedelta(days=1)
 	curday = week["start_date"]
 	days = []
 	while curday <= week["end_date"]:
 		days.append(int(week[weekdays[curday.weekday()]]))
 		curday += oneday
+	# TODO: Handle exceptions
+	#print(exc)
 	val.bitmap = list2bitstring(days)
 
 
@@ -116,7 +116,7 @@ for (newid,stop) in enumerate (stops):
 	pbstop.id = newid
 
 #Validities
-cur.execute("SELECT * FROM gtfs_calendar;")
+cur.execute("SELECT * FROM gtfs_calendar ORDER BY service_id::INT;")
 services = cur.fetchall()
 pbvalidities = pbtt.validities
 servlut = {}
@@ -127,6 +127,7 @@ for (newid,service) in enumerate(services):
 	cur.execute("SELECT * FROM gtfs_calendar_dates WHERE service_id = %s;",(service["service_id"],))
 	exceptions = cur.fetchall()
 	cal2validity(pbvalidities.add(),service,exceptions)
+print("Service LUT",servlut)
 	
 
 # Routes		
