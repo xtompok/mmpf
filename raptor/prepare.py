@@ -9,6 +9,7 @@ from datetime import date
 import calendar 
 import datetime
 import math
+import csv
 
 class Subroute(object):
 	maxid = 0
@@ -184,3 +185,10 @@ for stop in pbstops:
 
 with open("tt.bin","wb") as ttfile:
 	ttfile.write(pbtt.SerializeToString())
+
+with open("stopslut.csv","w") as slutfile:
+	writer = csv.writer(slutfile)
+	writer.writerow(["gtfs_id","raptor_id","name","lon","lat"])
+	for stop in stops:
+		writer.writerow([stop["stop_id"],stoplut[stop["stop_id"]],stop["stop_name"],stop["stop_lon"],stop["stop_lat"]])
+
