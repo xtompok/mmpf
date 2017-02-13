@@ -10,28 +10,6 @@
 
 #include "data.pb-c.h"
 #include "raptor.h"
-#define MAX_TRANSFERS 8
-
-#ifdef DEBUG
-#define dprintf(format, ...) printf(format, __VA_ARGS__)
-#else
-#define dprintf(format,...) 
-#endif
-
-struct stop_arrivals{
-	uint32_t time[MAX_TRANSFERS];
-	uint32_t from[MAX_TRANSFERS];	
-	uint32_t route[MAX_TRANSFERS];
-};
-struct stop_arrival{
-	uint32_t time;
-	uint32_t from;
-	uint32_t route;	
-};
-
-struct mem_data {
-	struct stop_arrivals * s_arr;	
-};
 
 char * prt_time(uint32_t time){
 	char * str;
@@ -45,7 +23,6 @@ char * prt_time(uint32_t time){
 }
 
 uint8_t is_valid_trip(Validity * valid, time_t time){
-	//return 1;
 	if (valid->start > time){
 		return 0;
 	}
@@ -326,6 +303,7 @@ uint32_t get_departure(Timetable * tt,uint32_t from,uint32_t to, uint32_t arr, u
 struct stop_arrival get_arrival(struct mem_data * md,uint32_t stop, uint32_t round){
 	struct stop_arrival sa;
 	sa.from = md->s_arr[stop].from[round];
+	sa.fdep = md->s_arr[stop].fdep[round];
 	sa.time = md->s_arr[stop].time[round];
 	sa.route = md->s_arr[stop].route[round];
 	return sa;
@@ -354,7 +332,8 @@ void print_tt_stats(Timetable * tt){
 	printf("Trips: %lu\n",tt->n_trip_validity);	
 	int ntrips;
 	ntrips = 0;
-	/*printf("Services:");
+#ifdef DEBUG
+	printf("Services:");
 	for (int r=0;r<tt->n_routes;r++){
 		Route * route;
 		route = tt->routes[r];
@@ -365,7 +344,8 @@ void print_tt_stats(Timetable * tt){
 		for (int t=0;t<(route->nstops*route->ntrips);t+=route->nstops){
 			printf("%d ",tt->trip_validity[route->servicesidx+t/route->nstops]);
 		}
-	}*/
+	}
+#endif 
 	printf("\n");
 	printf("Trips: %d\n",ntrips);
 }
@@ -393,6 +373,7 @@ struct mem_data * init_mem_data(Timetable * tt){
 		return NULL;
 	}
 	md->s_arr = calloc(tt->n_stops,sizeof(struct stop_arrivals));
+	dprintf("Allocating %d kB for memdata\n",tt->n_stops*sizeof(struct stop_arrivals)/1024);
 	if (!md->s_arr){
 		return NULL;
 	}
@@ -442,6 +423,7 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ti
 		for (int s=0;s<newtt->nstops;s++){
 			md->s_arr[s].time[round] = md->s_arr[s].time[round-1];
 			md->s_arr[s].from[round] = md->s_arr[s].from[round-1];
+			md->s_arr[s].fdep[round] = md->s_arr[s].fdep[round-1];
 			md->s_arr[s].route[round] = md->s_arr[s].route[round-1];
 					
 		}
@@ -458,6 +440,7 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ti
 
 			int trip = -1;
 			int trip_from = -1;
+			uint32_t trip_fdep = UINT32_MAX;
 
 			dprintf("--Route %s (id: %d)\n",rt->name,rt->id);
 			for (int s=0; s<rt->nstops; s++){
@@ -476,6 +459,7 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ti
 							continue;
 						trip = t;
 						trip_from = rs[s]->id;
+						trip_fdep = st[s+t].departure;
 #ifdef DEBUG
 						printf("Found trip %d on route %s at %s on %s\n",trip,rt->name,rs[s]->name,prt_time(st[s+t].departure));
 						if (t>0){
@@ -500,6 +484,7 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ti
 					if (curst->time[round] > st[s+trip].arrival){
 						curst->time[round] = st[s+trip].arrival;
 						curst->from[round] = trip_from;
+						curst->fdep[round] = trip_fdep;
 						curst->route[round] = newtt->routes[r].id;
 						dprintf("Updated time at %s to %s\n",rs[s]->name,prt_time(curst->time[round]));
 					}
@@ -579,7 +564,7 @@ void print_results(Timetable * tt, struct mem_data * md, int from, int to, int t
 		sa = get_arrival(md,s,i);
 		printf("%s (%s) --> %s (%s) by %s\n",
 			tt->stops[sa.from]->name,
-			prt_time(get_departure(tt,sa.from,s,sa.time,sa.route)),
+			prt_time(sa.fdep),
 			tt->stops[s]->name,
 			prt_time(sa.time),
 			tt->routes[sa.route]->name);	
