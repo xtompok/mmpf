@@ -31,3 +31,9 @@
 # Debug files
 *.dSYM/
 *.su
+
+# Vim swap
+*.swp
+
+#Python compiled modules
+*.pyc
