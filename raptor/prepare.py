@@ -186,6 +186,11 @@ for stop in pbstops:
 with open("tt.bin","wb") as ttfile:
 	ttfile.write(pbtt.SerializeToString())
 
+with open("routes.bin","wb") as routefile:
+	routes = data_pb2.Routes()
+	routes.routes.extend(pbtt.routes)
+	routefile.write(routes.SerializeToString())
+
 with open("stopslut.csv","w") as slutfile:
 	writer = csv.writer(slutfile)
 	writer.writerow(["gtfs_id","raptor_id","name","lon","lat"])

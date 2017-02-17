@@ -45,3 +45,7 @@ message Timetable {
 	repeated Transfer transfers = 8;
 	repeated uint32 stop_routes = 9;	
 }
+
+message Routes {
+	repeated Route routes = 1;
+}
