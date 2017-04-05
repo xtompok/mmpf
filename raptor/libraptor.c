@@ -182,35 +182,48 @@ struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetab
 
 
 
-struct mem_data * init_mem_data(Timetable * tt){
+struct mem_data * create_mem_data(Timetable * tt){
 	struct mem_data * md;
 	md = malloc(sizeof(struct mem_data));
 	if (!md){
 		return NULL;
 	}
 	md->s_arr = calloc(tt->n_stops,sizeof(struct stop_arrivals));
-	//dprintf("Allocating %d kB for memdata\n",tt->n_stops*sizeof(struct stop_arrivals)/1024);
 	if (!md->s_arr){
 		return NULL;
 	}
 	return md;
 }
 
-void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,time_t time){	
+void clear_mem_data(struct mem_data * md,int nstops){
+	for (int i=0;i<nstops;i++){
+		for (int j=0;j<MAX_TRANSFERS;j++){
+			md->s_arr[i].time[j] = UINT32_MAX;
+			md->s_arr[i].from[j] = UINT32_MAX;
+			md->s_arr[i].fdep[j] = UINT32_MAX;
+			md->s_arr[i].route[j] = UINT32_MAX;
+		}	
+	}
+}
+
+
+
+void search_con(Timetable * tt,
+	struct mem_data * md,
+	uint32_t from,
+	uint32_t to,
+	time_t time,
+	int max_rounds){
+
 	time_t date;
 	date = time - (time%(24*3600));
 	time %= 24*3600;
 	struct timetable * newtt;
 	newtt = gen_tt_for_date(tt,date,NULL); 
-	for (int s=0;s<newtt->nstops;s++){
-		for (int k=0;k<MAX_TRANSFERS;k++){
-			md->s_arr[s].time[k] = UINT32_MAX;
-		}
-	}
 
 	md->s_arr[from].time[0] = time;
 	
-	for (int round=1;round < MAX_TRANSFERS;round++){
+	for (int round=1;round < max_rounds;round++){
 		//dprintf("===========Round %d============\n",round);
 		//Copy times from last round
 		for (int s=0;s<newtt->nstops;s++){
@@ -218,6 +231,10 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ti
 			md->s_arr[s].from[round] = md->s_arr[s].from[round-1];
 			md->s_arr[s].fdep[round] = md->s_arr[s].fdep[round-1];
 			md->s_arr[s].route[round] = md->s_arr[s].route[round-1];
+					
+		}
+
+		for (int t=0;t<tt->n_transfers;t++){
 					
 		}
 		
@@ -295,3 +312,48 @@ void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,ti
 	}		
 }
 
+struct stop_conns * search_stop_conns(Timetable * tt, uint32_t from, time_t time){
+	time_t date;
+	date = time - (time%(24*3600));
+	time %= 24*3600;
+	struct timetable * newtt;
+	newtt = gen_tt_for_date(tt,date,NULL); 
+	printf("Stop: %s\n",tt->stops[from]->name);
+	
+	struct stop_conns * conns;
+	conns = malloc(sizeof(struct stop_conns));
+	conns->n_routes = newtt->stops[from].nroutes;
+	conns->routes = calloc(sizeof(struct stop_route),conns->n_routes);
+
+	for (int rIdx=0;rIdx<conns->n_routes;rIdx++)
+	{
+		struct route * r;
+		r = newtt->stops[from].routes[rIdx];
+		printf("Route: %s",r->name);
+		int fidx=0;
+		while (r->stops[fidx]->id != from){
+			fidx++;
+		}
+		int t=0;
+		while (r->trips[fidx+t].departure < time){
+			t+=r->nstops;	
+		}
+
+		conns->routes[rIdx].departure = r->trips[fidx+t].departure;
+		conns->routes[rIdx].id = r->id;
+		conns->routes[rIdx].n_stops = r->nstops-fidx-1;
+		conns->routes[rIdx].stops = calloc(sizeof(struct stop_arr),conns->routes[rIdx].n_stops);
+		struct stop_arr * arrs;
+		arrs = conns->routes[rIdx].stops;
+		for (int sidx=0;sidx < conns->routes[rIdx].n_stops;sidx++){
+			arrs[sidx].to = newtt->stops[fidx+sidx].id;
+			arrs[sidx].arrival = newtt->st_times[fidx+t+sidx].arrival;
+		}
+			
+
+
+		
+	}
+
+	return NULL;
+}

@@ -7,7 +7,7 @@ import re
 import subprocess
 import data_pb2
 from datetime import datetime
-from ctypes import Structure,c_uint32,c_uint64,POINTER,c_void_p,c_char_p
+from ctypes import Structure,c_uint32,c_uint64,POINTER,c_void_p,c_char_p,c_int
 from ctypes import cdll
 
 MAX_TRANSFERS=8
@@ -22,16 +22,20 @@ class mem_data(Structure):
 	_fields_ = [("s_arr",POINTER(stop_arrivals))]
 
 raptor = cdll.LoadLibrary("./libraptor.so")
-load_timetable = raptor.load_timetable
-search_con = raptor.search_con
 
+load_timetable = raptor.load_timetable
 load_timetable.argtypes = [c_char_p]
 load_timetable.restype = c_void_p
-search_con.argtypes = [c_void_p,POINTER(mem_data),c_uint32,c_uint32,c_uint64]
 
-init_mem_data = raptor.init_mem_data
-init_mem_data.argtypes = [c_void_p]
-init_mem_data.restype = POINTER(mem_data)
+search_con = raptor.search_con
+search_con.argtypes = [c_void_p,POINTER(mem_data),c_uint32,c_uint32,c_uint64,c_int]
+
+create_mem_data = raptor.create_mem_data
+create_mem_data.argtypes = [c_void_p]
+create_mem_data.restype = POINTER(mem_data)
+
+clear_mem_data = raptor.clear_mem_data
+clear_mem_data.argtypes = [POINTER(mem_data),c_int]
 
 def re_from_name(name):
 	parts = name.split(" ")
@@ -77,17 +81,19 @@ routes = load_routes("routes.bin")
 
 tt = load_timetable(c_char_p(b"tt.bin"))
 print("Loaded")
-md = init_mem_data(tt)
+md = create_mem_data(tt)
+clear_mem_data(md,len(stops))
 print("Initialized")
-search_con(tt,md,int(fstops[0]["raptor_id"]),int(tstops[0]["raptor_id"]),timestamp)
+search_con(tt,md,int(fstops[0]["raptor_id"]),int(tstops[0]["raptor_id"]),timestamp,7)
 print("Found")
 
-print(md.contents.s_arr[int(tstops[0]["raptor_id"])].route[0])
-print(md.contents.s_arr[int(tstops[0]["raptor_id"])].time[0])
+print(md.contents.s_arr[int(tstops[0]["raptor_id"])].route[7])
+print(md.contents.s_arr[int(tstops[0]["raptor_id"])].time[7])
 print(type(md))
 
 for s in stops:
 	for r in range(8):
-		print(s["name"],
-			routes[md.contents.s_arr[int(s["raptor_id"])].route[r]].name,
-			strtime(md.contents.s_arr[int(s["raptor_id"])].time[r]))
+		if md.contents.s_arr[int(s["raptor_id"])].time[r] != 2**32-1 and s != fstops[0]:
+			print(s["name"],
+				routes[md.contents.s_arr[int(s["raptor_id"])].route[r]].name,
+				strtime(md.contents.s_arr[int(s["raptor_id"])].time[r]))

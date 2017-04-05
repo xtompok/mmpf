@@ -16,12 +16,10 @@ RAPTOR_EXE=raptor
 RAPTOR_LDFLAGS=-lraptor -L. -Wl,-rpath=./
 
 $(LIBRAPTOR_LIB): $(LIBRAPTOR_OBJ) libraptor.c 
-	echo "Libraptor"
 	$(CC) $(CFLAGS) -fpic libraptor.c -o $@.o
 	$(CC) -shared  $(LIBRAPTOR_OBJ) $@.o -o $@ $(LDFLAGS)
 
 $(RAPTOR_EXE): $(RAPTOR_OBJ) $(LIBRAPTOR_LIB) $@.c
-	echo "Raptor"
 	$(CC) $(CFLAGS) $@.c -o $@.o
 	$(CC) $(RAPTOR_OBJ) $@.o -o $@ $(LDFLAGS) $(RAPTOR_LDFLAGS)
 

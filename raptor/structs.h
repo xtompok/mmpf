@@ -120,4 +120,26 @@ struct mem_data {
 };
 
 
+//*********************************/
+// Structures for osmwalk search **/
+//*********************************/
+
+struct stop_arr{
+	uint32_t to;
+	uint64_t arrival;
+};
+
+struct stop_route{
+	uint64_t departure;
+	uint32_t id;
+	uint32_t n_stops;
+	struct stop_arr * stops;
+};
+
+struct stop_conns{
+	int n_routes;
+	struct stop_route * routes;
+};
+
+
 #endif

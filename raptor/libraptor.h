@@ -27,13 +27,18 @@ int * gen_trips_lut(Timetable * tt,Route * rt,time_t time);
 // will recycle date-independent parts to save memory
 struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetable * old_tt);
 
-// Initialize memory data required for searching a connection
-struct mem_data * init_mem_data(Timetable * tt);
+// Create memory data structure required for searching a connection
+struct mem_data * create_mem_data(Timetable * tt);
+
+// Clear memory data structure required for searching a connection
+void clear_mem_data(struct mem_data * md,int nstops);
 
 /******************/
 
 // Search a connection
-void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,time_t time);
+void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,time_t time,int maxrounds);
+
+struct stop_conns * search_stop_conns(Timetable * tt, uint32_t from, time_t time);
 
 
 #endif

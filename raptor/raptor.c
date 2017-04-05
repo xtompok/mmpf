@@ -29,11 +29,12 @@ int main(int argc, char ** argv){
 //	}
 	
 	struct mem_data * md;
-	md = init_mem_data(timetable);
+	md = create_mem_data(timetable);
 	if (!md){
 		printf("Failed to init in-memory data");
 		return 1;	
 	}
+	clear_mem_data(md,timetable->n_stops);
 
 	
 	uint32_t from;
@@ -51,7 +52,7 @@ int main(int argc, char ** argv){
 
 	printf("Searching from %d to %d at %lu\n",from,to,time+curr_day_timestamp());
 
-	search_con(timetable,md,from,to,time+curr_day_timestamp());	
+	search_con(timetable,md,from,to,time+curr_day_timestamp(),MAX_TRANSFERS);	
 	print_results(timetable,md,from,to,time);
 
 	return 0;
