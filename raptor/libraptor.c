@@ -7,10 +7,12 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#include <err.h>
 
 #include "data.pb-c.h"
 #include "libraptor.h"
 #include "util.h"
+
 
 
 Timetable * load_timetable(char * filename){
@@ -366,9 +368,7 @@ struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, t
 		while (r->stops[fidx]->id != from){	
 			fidx++;
 			if (fidx >= r->nstops){
-				printf("Error, stop not found");
-				int * a;
-				*a = 100;
+				err(1,"Error, stop not found");
 			}
 			
 		}
