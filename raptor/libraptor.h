@@ -22,6 +22,7 @@ struct stop * gen_stops(Timetable * tt);
 // Semantic: id in PBF trips -> index in valid trips * -1 if trip is invalid
 int * gen_trips_lut(Timetable * tt,Route * rt,time_t time);
 
+void free_tt(struct timetable * tt);
 // Create internal timetable structure from given PBF timetable and date
 // If some structure was already created, it is possible to give pointer to it and function
 // will recycle date-independent parts to save memory
@@ -38,7 +39,8 @@ void clear_mem_data(struct mem_data * md,int nstops);
 // Search a connection
 void search_con(Timetable * tt,struct mem_data * md,uint32_t from,uint32_t to,time_t time,int maxrounds);
 
-struct stop_conns * search_stop_conns(Timetable * tt, uint32_t from, time_t time);
+void free_conns(struct stop_conns * conns);
+struct stop_conns * search_stop_conns(struct timetable * tt, uint32_t from, time_t time);
 
 
 #endif
