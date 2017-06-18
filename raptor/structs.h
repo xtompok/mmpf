@@ -17,7 +17,7 @@
 	optional string name = 7;
 }*/
 struct route{
-	uint32_t id;
+	Route * pbroute;
 	uint32_t nstops;
 	uint32_t ntrips;
 	struct stop ** stops;
@@ -43,7 +43,7 @@ message Stop{
 	optional string name = 6;
 } */
 struct stop{
-	uint32_t id;
+	Stop * pbstop;
 	uint32_t nroutes;	
 	uint32_t ntransfers;
 	struct route ** routes;
@@ -125,13 +125,13 @@ struct mem_data {
 //*********************************/
 
 struct stop_arr{
-	uint64_t to;
+	Stop * to;
 	uint64_t arrival;
 };
 
 struct stop_route{
 	uint64_t departure;
-	uint64_t id;
+	Route * pbroute;
 	uint32_t n_stops;
 	struct stop_arr * stops;
 };
