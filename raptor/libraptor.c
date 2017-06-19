@@ -123,7 +123,7 @@ struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetab
 		//dprintf("Routes: %d, ridx: %d\n",tt->nroutes,ridx);
 		route_lut[ridx]=tt->nroutes;
 		tt->nroutes++;
-		r->pbroute = pbr;
+		r->pbroute = pbtt->routes[ridx];
 		r->nstops = pbr->nstops;
 		r->stops = tt->rt_stops + nrt_stops ;
 		for (int i=0;i<pbr->nstops;i++){
