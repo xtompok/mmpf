@@ -86,6 +86,14 @@ struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetab
 		tt->stops=old_tt->stops;
 		tt->nstops=old_tt->nstops;
 	}
+
+/*	for (int sidx=0;sidx < pbtt->n_stops;sidx++){
+		printf("Stop: %s\n",pbtt->stops[sidx]->name);
+		for (int ridx=pbtt->stops[sidx]->routeidx;ridx < pbtt->stops[sidx]->routeidx+pbtt->stops[sidx]->nroutes;ridx++){
+			printf("%s, ",pbtt->routes[pbtt->stop_routes[ridx]]->name);
+		}
+		printf("\n");
+	}*/
 	tt->routes = calloc(pbtt->n_routes,sizeof(struct route));
 	tt->st_times = calloc(pbtt->n_stop_times,sizeof(struct st_time));
 	tt->rt_stops = calloc(pbtt->n_route_stops,sizeof(struct stop *));
@@ -159,14 +167,24 @@ struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetab
 	st_routesidx=0;
 	stopidx = 0;
 	tt->stops[0].routes = tt->st_routes;
+//	printf("New stop routes\n");
+//	printf("%p\n",tt);
 	for (int sridx=0;sridx < pbtt->n_stop_routes;sridx++){
 		uint32_t pbridx;
 		pbridx = pbtt->stop_routes[sridx];
 
+		if (pbtt->stops[stopidx]->nroutes==0){
+			tt->stops[stopidx].routes = NULL;
+			tt->stops[stopidx].nroutes = 0;
+			stopidx++;
+			continue;
+		}
+		
 		// We are switching to the routes for the next stop
 		if (sridx >= pbtt->stops[stopidx]->routeidx + pbtt->stops[stopidx]->nroutes){
 			tt->stops[stopidx].nroutes = tt->st_routes+st_routesidx - tt->stops[stopidx].routes;
 			stopidx++;
+//			printf("\nStop: %s\n",tt->stops[stopidx].name);
 			tt->stops[stopidx].routes = tt->st_routes+st_routesidx;
 		}
 		// Route has no trips at given date
@@ -176,6 +194,7 @@ struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetab
 		
 		// Append route to the list
 		tt->st_routes[st_routesidx] = tt->routes+route_lut[pbridx];
+//		printf("%s, ",tt->st_routes[st_routesidx]->name);
 		st_routesidx++;
 
 	}
@@ -358,14 +377,23 @@ struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, t
 	int nroutes;
 	nroutes = 0;
 
+	for (int rIdx=0;rIdx<conns->n_routes;rIdx++){
+		struct route * r;
+		r = newtt->stops[from].routes[rIdx];
+		printf("Route: %s\n",r->name);
+			
+	}
+
 	for (int rIdx=0;rIdx<conns->n_routes;rIdx++)
 	{
 		struct route * r;
 		r = newtt->stops[from].routes[rIdx];
 		printf("Route: %s\n",r->name);
 		int fidx=0;
-		//printf("Search from: %s\n",r->stops[0]->name);
+		printf("Search from: %s\n",r->stops[0]->name);
+		printf("Stop: %d\n",from);
 		while (r->stops[fidx]->pbstop->id != from){	
+			printf("Stop: %s(%d)\n",r->stops[fidx]->name,r->stops[fidx]->pbstop->id);
 			fidx++;
 			if (fidx >= r->nstops){
 				err(1,"Error, stop not found");
