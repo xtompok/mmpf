@@ -1,3 +1,4 @@
+syntax = "proto2";
 message Route{
 	required uint32 id = 1;
 	required uint32 nstops = 2;
@@ -6,6 +7,7 @@ message Route{
 	required uint32 tripsidx = 5;
 	required uint32 servicesidx = 6;
 	optional string name = 7;
+	optional uint32 type = 8;
 }
 message StopTime{
 	required int32 arrival = 1;
@@ -19,6 +21,7 @@ message Stop{
 	required uint32 routeidx = 4;
 	required uint32 transferidx = 5;
 	optional string name = 6;
+	optional bool underground = 7;
 }
 
 message Transfer{

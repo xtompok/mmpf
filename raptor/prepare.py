@@ -15,7 +15,7 @@ class Subroute(object):
 	maxid = 0
 	stop_seqs = {}
 
-	def __init__(self,stimes,service_id,name=None):
+	def __init__(self,stimes,service_id,name=None,atype=None):
 		stops = tuple(map(lambda x:stoplut[x["stop_id"]], stimes))
 		service_id = int(service_id)
 		pbtimes = []
@@ -29,18 +29,20 @@ class Subroute(object):
 			self.stop_seqs[stops].append(pbtimes,service_id)
 			self.valid = False
 		else:
-			self.new(pbtimes,service_id,stops,name)
+			self.new(pbtimes,service_id,stops,name,atype)
 			self.stop_seqs[stops] = self
 			self.valid = True
 
 		
-	def new(self,pbtimes,service_id,stops,name):
+	def new(self,pbtimes,service_id,stops,name,atype):
 		self.pbroute = data_pb2.Route()
 		self.pbroute.id = Subroute.maxid
 		self.pbroute.ntrips = 1
 		self.pbroute.nstops = len(stops)
 		if name:
 			self.pbroute.name = name
+		if atype:
+			self.pbroute.type = atype 
 
 		Subroute.maxid += 1
 
@@ -147,7 +149,7 @@ for route in routes:
 		cur.execute("SELECT * FROM gtfs_stop_times WHERE trip_id = %s ORDER BY stop_sequence",(trip["trip_id"],))
 		stimes = cur.fetchall()
 		#print("Trip {},serivce_id {}".format(trip["trip_id"],trip["service_id"]));
-		sr = Subroute(stimes,servlut[trip["service_id"]],route["route_short_name"])
+		sr = Subroute(stimes,servlut[trip["service_id"]],route["route_short_name"],int(route["route_type"]))
 		if sr.valid:
 			subroutes.append(sr)
 
@@ -170,10 +172,20 @@ for route in pbroutes:
 			sroutes[stop].append(route.id)
 		else:
 			sroutes[stop] = [route.id]
+		
 
 routecnt = 0
 for stop in pbstops:
 	routes = sroutes.get(stop.id,[])
+	if len(routes) == 0:
+		stop.underground = False
+	else:
+		atype = pbroutes[routes[0]].type
+		print(atype)
+		if (atype == 1):
+			stop.underground = True
+		else:
+			stop.underground = False
 	stop.nroutes=len(routes)
 	stop.routeidx=routecnt
 	pbsroutes.extend(routes)
@@ -195,5 +207,5 @@ with open("stopslut.csv","w") as slutfile:
 	writer = csv.writer(slutfile)
 	writer.writerow(["gtfs_id","raptor_id","name","lon","lat"])
 	for stop in stops:
-		writer.writerow([stop["stop_id"],stoplut[stop["stop_id"]],stop["stop_name"],stop["stop_lon"],stop["stop_lat"]])
+		writer.writerow([stop["stop_id"],stoplut[stop["stop_id"]],stop["stop_name"],stop["stop_lon"],stop["stop_lat"],pbstops[stoplut[stop["stop_id"]]].underground])
 
