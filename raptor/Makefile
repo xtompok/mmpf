@@ -1,4 +1,5 @@
 CC=gcc
+PGFLAGS= -pg
 CFLAGS= -c -Wall -std=c99 -ggdb3 -O2 -march=native
 LDFLAGS=-lprotobuf-c -lm
 LDPATHS=-L ./
@@ -16,11 +17,11 @@ RAPTOR_EXE=raptor
 RAPTOR_LDFLAGS=-lraptor -L. -Wl,-rpath=./
 
 $(LIBRAPTOR_LIB): $(LIBRAPTOR_OBJ) libraptor.c 
-	$(CC) $(CFLAGS) -fpic libraptor.c -o $@.o
+	$(CC) $(CFLAGS) $(PGFLAGS) -fpic libraptor.c -o $@.o
 	$(CC) -shared  $(LIBRAPTOR_OBJ) $@.o -o $@ $(LDFLAGS)
 
 $(RAPTOR_EXE): $(RAPTOR_OBJ) $(LIBRAPTOR_LIB) $@.c
-	$(CC) $(CFLAGS) $@.c -o $@.o
+	$(CC) $(CFLAGS) $(PGFLAGS) $@.c -o $@.o
 	$(CC) $(RAPTOR_OBJ) $@.o -o $@ $(LDFLAGS) $(RAPTOR_LDFLAGS)
 
 
