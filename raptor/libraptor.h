@@ -14,6 +14,7 @@
 
 // Load PBF timetable from the given filename
 Timetable * load_timetable(char * filename);
+void free_timetable(Timetable * tt);
 
 // Create internal stops structure from PBF
 struct stop * gen_stops(Timetable * tt);

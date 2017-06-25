@@ -30,7 +30,14 @@ Timetable * load_timetable(char * filename){
 	rewind(ttfile);
 	fread(ttbuf,ttbuf_sz,1,ttfile);
 
-	return timetable__unpack(NULL,ttbuf_sz,ttbuf);
+	Timetable * tt;
+	tt = timetable__unpack(NULL,ttbuf_sz,ttbuf);
+	free(ttbuf);
+	return tt;
+}
+
+void free_timetable(Timetable * tt){
+	timetable__free_unpacked(tt,NULL);
 }
 
 
@@ -41,8 +48,7 @@ struct stop * gen_stops(Timetable * tt){
 		stops[i].pbstop = tt->stops[i];
 		stops[i].nroutes = tt->stops[i]->nroutes;
 		stops[i].ntransfers = tt->stops[i]->ntransfers;
-		stops[i].name = malloc(strlen(tt->stops[i]->name)+1);
-		strcpy(stops[i].name,tt->stops[i]->name);
+		stops[i].name = tt->stops[i]->name;
 	}	
 	return stops;
 }
@@ -64,16 +70,12 @@ int * gen_trips_lut(Timetable * tt,Route * rt,time_t time){
 	return lut;
 }
 void free_tt(struct timetable * tt){
-	for (int stopidx=0; stopidx < tt->nstops; stopidx++){
-		free(tt->stops[stopidx].name);
-	}
-	for (int ridx=0;ridx < tt->nroutes;ridx++){
-		free(tt->routes[ridx].name);
-	}
 	free(tt->routes);
 	free(tt->st_times);
 	free(tt->rt_stops);
 	free(tt->st_routes);	
+	free(tt->stops);
+	free(tt);
 }
 
 struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetable * old_tt){
@@ -154,8 +156,7 @@ struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetab
 				st->departure = pbst->departure;
 			}
 		}
-		r->name = malloc(strlen(pbr->name)+1);
-		strcpy(r->name,pbr->name);
+		r->name = pbr->name;
 		//dprintf("Processing route %s\n",r->name);
 
 
@@ -364,11 +365,12 @@ struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, t
 	date = time - (time%(24*3600));
 	time %= 24*3600;
 
-	char * timestr;
+	/*char * timestr;
 	timestr = prt_time(time);
 	printf("Stop: %s at: %s\n",newtt->stops[from].name,timestr);
 	free(timestr);
-	
+	*/
+
 	struct stop_conns * conns;
 	conns = malloc(sizeof(struct stop_conns));
 	conns->n_routes = newtt->stops[from].nroutes;
@@ -377,23 +379,23 @@ struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, t
 	int nroutes;
 	nroutes = 0;
 
-	for (int rIdx=0;rIdx<conns->n_routes;rIdx++){
+	/*for (int rIdx=0;rIdx<conns->n_routes;rIdx++){
 		struct route * r;
 		r = newtt->stops[from].routes[rIdx];
 		printf("Route: %s\n",r->name);
 			
-	}
+	}*/
 
 	for (int rIdx=0;rIdx<conns->n_routes;rIdx++)
 	{
 		struct route * r;
 		r = newtt->stops[from].routes[rIdx];
-		printf("Route: %s\n",r->name);
+	//	printf("Route: %s\n",r->name);
 		int fidx=0;
-		printf("Search from: %s\n",r->stops[0]->name);
-		printf("Stop: %d\n",from);
+	//	printf("Search from: %s\n",r->stops[0]->name);
+	//	printf("Stop: %d\n",from);
 		while (r->stops[fidx]->pbstop->id != from){	
-			printf("Stop: %s(%d)\n",r->stops[fidx]->name,r->stops[fidx]->pbstop->id);
+	//		printf("Stop: %s(%d)\n",r->stops[fidx]->name,r->stops[fidx]->pbstop->id);
 			fidx++;
 			if (fidx >= r->nstops){
 				err(1,"Error, stop not found");
@@ -424,16 +426,16 @@ struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, t
 		conns->routes[nroutes].stops = calloc(sizeof(struct stop_arr),conns->routes[nroutes].n_stops);
 		struct stop_arr * arrs;
 		arrs = conns->routes[nroutes].stops;
-		char * timestr;
+		/*char * timestr;
 		timestr = prt_time(conns->routes[nroutes].departure);
 		printf("Departure at %s\n",timestr);
-		free(timestr);
+		free(timestr);*/
 		for (int sidx=0;sidx < (conns->routes[nroutes].n_stops);sidx++){
 			arrs[sidx].to = r->stops[fidx+sidx+1]->pbstop;
 			arrs[sidx].arrival = r->trips[fidx+t+sidx+1].arrival;
-			timestr = prt_time(arrs[sidx].arrival);
+		/*	timestr = prt_time(arrs[sidx].arrival);
 			printf("At %s on %s\n",arrs[sidx].to->name,timestr);
-			free(timestr);
+			free(timestr);*/
 		}
 		nroutes++;
 			
