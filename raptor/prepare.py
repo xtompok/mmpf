@@ -161,6 +161,7 @@ pbvals = pbtt.trip_validity
 
 for sr in subroutes:
 	sr.flush(pbrstops,pbtimes,pbroutes,pbvals)
+	del(sr)
 
 pbsroutes = pbtt.stop_routes
 pbtransfers = pbtt.transfers

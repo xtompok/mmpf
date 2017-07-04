@@ -400,7 +400,6 @@ struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, t
 			if (fidx >= r->nstops){
 				err(1,"Error, stop not found");
 			}
-			
 		}
 		// Can't get on on the last stop
 		if (fidx == r->nstops-1){
@@ -438,10 +437,6 @@ struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, t
 			free(timestr);*/
 		}
 		nroutes++;
-			
-
-
-		
 	}
 	conns->n_routes = nroutes;
 
