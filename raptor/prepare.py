@@ -107,7 +107,7 @@ cur = conn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 pbtt = data_pb2.Timetable()
 
 # Stops
-cur.execute("SELECT * FROM gtfs_stops")
+cur.execute("SELECT * FROM gtfs_stops WHERE location_type = 0")
 stops = cur.fetchall()
 stoplut = {}
 stopilut = {}

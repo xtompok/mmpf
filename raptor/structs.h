@@ -59,8 +59,8 @@ message Transfer{
 }*/
 
 struct transfer{
-	uint32_t from;
-	uint32_t to;
+	struct stop from;
+	struct stop to;
 	double time;
 };
 
