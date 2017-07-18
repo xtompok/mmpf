@@ -18,3 +18,5 @@ do
 done
 cd ..
 psql gtfs_praha < GTFS_shapes.sql
+
+./prepare.py
