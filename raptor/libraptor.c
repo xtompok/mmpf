@@ -74,7 +74,10 @@ void free_tt(struct timetable * tt){
 	free(tt->st_times);
 	free(tt->rt_stops);
 	free(tt->st_routes);	
-	free(tt->stops);
+	if (tt->stops != NULL){
+		free(tt->stops);
+		tt->stops = NULL;
+	}
 	free(tt);
 }
 
@@ -361,9 +364,6 @@ void free_conns(struct stop_conns * conns){
 }
 
 struct stop_conns * search_stop_conns(struct timetable * newtt, uint32_t from, time_t time){
-	time_t date;
-	date = time - (time%(24*3600));
-	time %= 24*3600;
 
 	/*char * timestr;
 	timestr = prt_time(time);
