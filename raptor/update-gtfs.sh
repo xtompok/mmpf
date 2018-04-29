@@ -1,9 +1,8 @@
 #!/bin/sh
 
-cd "$(dirname \"$0\")/jrcache"
+cd $(dirname $0)/jrcache
 NAME=`date +"jr_%Y-%m-%d_%H-%M.zip"`
-wget -O jrcache/$NAME http://opendata.iprpraha.cz/DPP/JR/jrdata.zip
-cd jrcache
+wget -O $NAME http://opendata.iprpraha.cz/DPP/JR/jrdata.zip
 unzip -o $NAME
 
 
