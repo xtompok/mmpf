@@ -95,6 +95,7 @@ struct timetable {
 	struct stop * stops;
 	struct stop ** rt_stops;
 	struct route ** st_routes;
+	struct timetable * old_tt;
 };
 
 

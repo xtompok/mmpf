@@ -74,9 +74,8 @@ void free_tt(struct timetable * tt){
 	free(tt->st_times);
 	free(tt->rt_stops);
 	free(tt->st_routes);	
-	if (tt->stops != NULL){
+	if (tt->old_tt == NULL){
 		free(tt->stops);
-		tt->stops = NULL;
 	}
 	free(tt);
 }
@@ -87,9 +86,11 @@ struct timetable * gen_tt_for_date(Timetable * pbtt, time_t date, struct timetab
 	if (old_tt == NULL){
 		tt->stops=gen_stops(pbtt);
 		tt->nstops=pbtt->n_stops;
+		tt->old_tt = NULL;
 	}else{
 		tt->stops=old_tt->stops;
 		tt->nstops=old_tt->nstops;
+		tt->old_tt = old_tt;
 	}
 
 /*	for (int sidx=0;sidx < pbtt->n_stops;sidx++){
