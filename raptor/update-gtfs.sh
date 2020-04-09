@@ -2,7 +2,7 @@
 
 cd $(dirname $0)/jrcache
 NAME=`date +"jr_%Y-%m-%d_%H-%M.zip"`
-wget -O $NAME http://opendata.iprpraha.cz/DPP/JR/jrdata.zip
+wget -O $NAME http://data.pid.cz/PID_GTFS.zip
 unzip -o $NAME
 
 

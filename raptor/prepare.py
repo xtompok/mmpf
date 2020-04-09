@@ -120,7 +120,7 @@ for (newid,stop) in enumerate (stops):
 	pbstop.id = newid
 
 #Validities
-cur.execute("SELECT * FROM gtfs_calendar ORDER BY service_id::INT;")
+cur.execute("SELECT * FROM gtfs_calendar ORDER BY service_id;")
 services = cur.fetchall()
 pbvalidities = pbtt.validities
 servlut = {}

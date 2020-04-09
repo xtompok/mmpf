@@ -35,10 +35,13 @@
  (
  route_id VARCHAR(10),
  agency_id NUMERIC(3),
- route_short_name VARCHAR(10),
+ route_short_name VARCHAR(50),
  route_long_name VARCHAR(100),
  route_type NUMERIC(3),
- route_color VARCHAR(8)
+ route_url VARCHAR(100),
+ route_color VARCHAR(8),
+ route_text_color VARCHAR(8),
+ is_night NUMERIC(1)
  );
 
  CREATE INDEX ON GTFS_ROUTES(route_id);
@@ -53,9 +56,13 @@
  stop_name VARCHAR(100),
  stop_lat NUMERIC(38,8),
  stop_lon NUMERIC(38,8),
+ zone_id VARCHAR(3),
+ stop_url VARCHAR(100),
  location_type NUMERIC(2),
  parent_station VARCHAR(15),
- wheelchair_boarding NUMERIC(1)
+ wheelchair_boarding NUMERIC(1),
+ level_id VARCHAR(10),
+ platform_code VARCHAR(10)
  );
 
  /*
@@ -66,15 +73,17 @@
  CREATE TABLE GTFS_TRIPS
  (
  route_id VARCHAR(10),
- service_id VARCHAR(10),
- trip_id NUMERIC(10),
+ service_id VARCHAR(20),
+ trip_id VARCHAR(20),
  trip_headsign VARCHAR(50),
- shape_id NUMERIC(10),
- wheelchair_accessible NUMERIC(1),
- block_id NUMERIC(10),
+ trip_short_name VARCHAR(50),
  direction_id NUMERIC(1),
+ block_id VARCHAR(20),
+ shape_id VARCHAR(10),
+ wheelchair_accessible NUMERIC(1),
  bikes_allowed NUMERIC(1),
- exceptional NUMERIC(10)
+ exceptional NUMERIC(10),
+ trip_operation_type VARCHAR(10)
  );
 
  CREATE INDEX ON GTFS_TRIPS(trip_id);
@@ -89,14 +98,15 @@
 
  CREATE TABLE GTFS_STOP_TIMES
  (
- trip_id NUMERIC(10),
+ trip_id VARCHAR(20),
  arrival_time VARCHAR(8),
  departure_time VARCHAR(8),
  stop_id VARCHAR(15),
  stop_sequence NUMERIC(10),
+ stop_headsign VARCHAR(50),
  pickup_type NUMERIC(1),
  drop_off_type NUMERIC(1),
- stop_headsign VARCHAR(50)
+ shape_dist_traveled DOUBLE PRECISION
  );
 
  CREATE INDEX ON GTFS_STOP_TIMES(trip_id);
@@ -109,10 +119,11 @@
 
  CREATE TABLE GTFS_SHAPES
  (
- shape_id NUMERIC(6),
+ shape_id VARCHAR(10),
  shape_pt_lat NUMERIC,
  shape_pt_lon NUMERIC,
- shape_pt_sequence NUMERIC(6)
+ shape_pt_sequence NUMERIC(6),
+ shape_dist_traveled DOUBLE PRECISION
  );
 
  /*
@@ -122,7 +133,7 @@
 
  CREATE TABLE GTFS_CALENDAR_DATES
  (
- service_id VARCHAR(10),
+ service_id VARCHAR(20),
  exception_date DATE,
  exception_type VARCHAR(10)
  );
@@ -135,7 +146,7 @@
 
  CREATE TABLE GTFS_CALENDAR
  (
- service_id VARCHAR(10),
+ service_id VARCHAR(20),
  monday NUMERIC(1),
  tuesday NUMERIC(1),
  wednesday NUMERIC(1),
